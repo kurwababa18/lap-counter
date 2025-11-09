@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html manifest="counter.appcache">
+<head>
+    <meta charset="utf-8">
+    <title>Lap Counter</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            -webkit-text-size-adjust: 100%;
+            overflow: hidden;
+            height: 100%;
+        }
+        #upZone, #downZone {
+            width: 100%;
+            position: relative;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        #upZone {
+            background: #1f9d3a;
+            color: #ffffff;
+        }
+        #downZone {
+            background: #c72d2d;
+            color: #ffffff;
+        }
+        .centered {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            -webkit-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-weight: bold;
+        }
+        #countDisplay {
+            letter-spacing: 0.05em;
+        }
+        #minusDisplay {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="upZone">
+        <div id="countDisplay" class="centered">00</div>
+    </div>
+    <div id="downZone">
+        <div id="minusDisplay" class="centered">&minus;</div>
+    </div>
+    <script>
+    (function () {
+        var upZone = document.getElementById('upZone');
+        var downZone = document.getElementById('downZone');
+        var countDisplay = document.getElementById('countDisplay');
+        var minusDisplay = document.getElementById('minusDisplay');
+        var count = 0;
+        var lockedUntil = 0;
+        var activeTouchId = null;
+
+        function formatCount(n) {
+            if (n >= 0 && n <= 9) {
+                return '0' + n;
+            }
+            return String(n);
+        }
+
+        function renderCount() {
+            countDisplay.innerHTML = formatCount(count);
+        }
+
+        function saveCount() {
+            try {
+                localStorage.setItem('lapCount', String(count));
+            } catch (e) {}
+        }
+
+        function loadCount() {
+            var stored;
+            try {
+                stored = localStorage.getItem('lapCount');
+            } catch (e) {
+                stored = null;
+            }
+            var parsed = parseInt(stored, 10);
+            if (!isNaN(parsed) && parsed >= 0 && parsed <= 99) {
+                count = parsed;
+            } else {
+                count = 0;
+            }
+        }
+
+        function adjustLayout() {
+            var h = window.innerHeight || document.documentElement.clientHeight || 0;
+            if (!h) {
+                return;
+            }
+            var greenHeight = Math.floor(h * 0.75);
+            var redHeight = h - greenHeight;
+            document.documentElement.style.height = h + 'px';
+            document.body.style.height = h + 'px';
+            upZone.style.height = greenHeight + 'px';
+            downZone.style.height = redHeight + 'px';
+            var countFont = Math.floor(greenHeight * 0.55);
+            if (countFont < 20) {
+                countFont = 20;
+            }
+            var minusFont = Math.floor(redHeight * 0.6);
+            if (minusFont < 20) {
+                minusFont = 20;
+            }
+            countDisplay.style.fontSize = countFont + 'px';
+            minusDisplay.style.fontSize = minusFont + 'px';
+        }
+
+        function unlockTouch(e) {
+            var touches = e.changedTouches;
+            var i;
+            for (i = 0; i < touches.length; i++) {
+                if (touches[i].identifier === activeTouchId) {
+                    activeTouchId = null;
+                    break;
+                }
+            }
+        }
+
+        function canProcessTouch() {
+            if (activeTouchId !== null) {
+                return false;
+            }
+            var now = new Date().getTime();
+            if (now < lockedUntil) {
+                return false;
+            }
+            return true;
+        }
+
+        function lockAfterAction(touchId) {
+            activeTouchId = touchId;
+            lockedUntil = new Date().getTime() + 2000;
+        }
+
+        function incrementCount(e) {
+            if (!e.changedTouches || !e.changedTouches.length) {
+                return;
+            }
+            var touch = e.changedTouches[0];
+            if (!canProcessTouch()) {
+                e.preventDefault();
+                return;
+            }
+            if (count >= 99) {
+                e.preventDefault();
+                return;
+            }
+            e.preventDefault();
+            count += 1;
+            renderCount();
+            saveCount();
+            lockAfterAction(touch.identifier);
+        }
+
+        function decrementCount(e) {
+            if (!e.changedTouches || !e.changedTouches.length) {
+                return;
+            }
+            var touch = e.changedTouches[0];
+            if (!canProcessTouch()) {
+                e.preventDefault();
+                return;
+            }
+            if (count <= 0) {
+                e.preventDefault();
+                return;
+            }
+            e.preventDefault();
+            count -= 1;
+            renderCount();
+            saveCount();
+            lockAfterAction(touch.identifier);
+        }
+
+        document.addEventListener('touchmove', function (event) {
+            event.preventDefault();
+        }, false);
+
+        document.addEventListener('touchend', unlockTouch, false);
+        document.addEventListener('touchcancel', unlockTouch, false);
+
+        upZone.addEventListener('touchstart', incrementCount, false);
+        downZone.addEventListener('touchstart', decrementCount, false);
+
+        window.addEventListener('resize', adjustLayout, false);
+        window.addEventListener('orientationchange', adjustLayout, false);
+
+        loadCount();
+        adjustLayout();
+        renderCount();
+    })();
+    </script>
+</body>
+</html>
