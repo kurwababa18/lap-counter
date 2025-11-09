@@ -64,6 +64,7 @@
         var count = 0;
         var lockedUntil = 0;
         var activeTouchId = null;
+        var layoutRefreshTimer = null;
 
         function formatCount(n) {
             if (n >= 0 && n <= 9) {
@@ -98,11 +99,25 @@
         }
 
         function adjustLayout() {
-            var h = window.innerHeight || document.documentElement.clientHeight || 0;
+            var docEl = document.documentElement;
+            var body = document.body;
+            var h = window.innerHeight || 0;
+            if (!h && docEl) {
+                h = docEl.clientHeight;
+            }
+            if (!h && body) {
+                h = body.clientHeight;
+            }
+            if (!h && docEl) {
+                h = docEl.offsetHeight;
+            }
+            if (!h && body) {
+                h = body.offsetHeight;
+            }
             if (!h) {
                 return;
             }
-            var greenHeight = Math.floor(h * 0.75);
+            var greenHeight = Math.floor(h * 0.85);
             var redHeight = h - greenHeight;
             document.documentElement.style.height = h + 'px';
             document.body.style.height = h + 'px';
@@ -118,6 +133,17 @@
             }
             countDisplay.style.fontSize = countFont + 'px';
             minusDisplay.style.fontSize = minusFont + 'px';
+        }
+
+        function refreshLayout() {
+            adjustLayout();
+            if (layoutRefreshTimer !== null) {
+                window.clearTimeout(layoutRefreshTimer);
+            }
+            layoutRefreshTimer = window.setTimeout(function () {
+                layoutRefreshTimer = null;
+                adjustLayout();
+            }, 400);
         }
 
         function unlockTouch(e) {
@@ -197,11 +223,11 @@
         upZone.addEventListener('touchstart', incrementCount, false);
         downZone.addEventListener('touchstart', decrementCount, false);
 
-        window.addEventListener('resize', adjustLayout, false);
-        window.addEventListener('orientationchange', adjustLayout, false);
+        window.addEventListener('resize', refreshLayout, false);
+        window.addEventListener('orientationchange', refreshLayout, false);
 
         loadCount();
-        adjustLayout();
+        refreshLayout();
         renderCount();
     })();
     </script>
