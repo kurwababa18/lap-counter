@@ -1,10 +1,11 @@
 CACHE MANIFEST
-# v4
-# v3
+# v2
 
 CACHE:
 index.html
-apple-touch-icon.png
+# apple-touch-icon.png  (uncomment this line ONLY if index.html references that file and it exists in repo root)
 
 NETWORK:
-*
+
+FALLBACK:
+/ /index.html
